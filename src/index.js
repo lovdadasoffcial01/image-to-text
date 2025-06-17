@@ -63,8 +63,9 @@ export default {
 
         // --- 5. Call Cloudflare Workers AI API ---
         // Construct the URL for the LLaVA 1.5-7B-HF model.
-        // The `env` object provides access to environment variables (including secrets)
-        // configured for this Worker in Cloudflare dashboard/wrangler.toml.
+        // The `env` object provides access to environment variables (including secrets).
+        // If deploying via GitHub/Cloudflare Pages, ensure these are set in your Pages project
+        // environment variables or GitHub Actions secrets and passed to Wrangler.
         const CLOUDFLARE_AI_URL = `https://api.cloudflare.com/client/v4/accounts/${env.ACCOUNT_ID}/ai/run/@cf/llava-1.5-7b-hf`;
 
         // Prepare the payload according to the Cloudflare Workers AI API documentation.
@@ -85,8 +86,8 @@ export default {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${env.API_TOKEN}`, // THIS IS WHERE AUTHENTICATION HAPPENS!
-                                                                  // Ensure env.API_TOKEN is set via `wrangler secret put`
-                                                                  // with a token having Workers AI:Edit permissions.
+                                                                  // Ensure env.API_TOKEN is available to your Worker
+                                                                  // via Pages Env Vars or GitHub Secrets.
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(aiPayload),
@@ -96,7 +97,7 @@ export default {
             // If the AI API returns an error (e.g., 401, 400, 500), propagate it back.
             if (!aiResponse.ok) {
                 const errorData = await aiResponse.json();
-                console.error("AI API Error:", errorData); // Log detailed error for debugging in `wrangler tail`
+                console.error("AI API Error:", errorData); // Log detailed error for debugging in `wrangler tail` or Pages logs
                 return new Response(JSON.stringify({ 
                     message: `AI model error: ${errorData.errors?.[0]?.message || 'Unknown error from Cloudflare AI'}` 
                 }), {
