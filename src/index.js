@@ -4,12 +4,8 @@
 // The env.AI binding automatically handles authentication and URL construction,
 // keeping your ACCOUNT_ID and API_TOKEN secure.
 
-// No 'interface Env' declaration here, as this is a plain JavaScript file.
-// The `env` object will still be provided by Cloudflare's runtime.
-
 export default {
     // The 'env' parameter will contain your AI binding and any other variables.
-    // Using 'any' type here for 'env' to avoid TypeScript errors in a .js file.
     async fetch(request, env) {
         // --- 1. Handle CORS Preflight Requests (OPTIONS method) ---
         if (request.method === 'OPTIONS') {
@@ -87,14 +83,13 @@ export default {
 
         // --- 5. Call Cloudflare Workers AI using the `env.AI` binding ---
         const modelId = "@cf/llava-hf/llava-1.5-7b-hf"; // This is the exact model ID from Cloudflare's docs
+        
+        // !!! THIS IS THE CORRECTED INPUT STRUCTURE FOR LLAVA !!!
+        // It's a flat object directly containing 'prompt', 'image', 'max_tokens'.
+        // NOT a 'messages' array like for chat models.
         const aiInput = {
-            messages: [
-                {
-                    role: "user",
-                    content: prompt,
-                    image: [...imageUint8Array] // Pass the Uint8Array contents as an array of numbers
-                }
-            ],
+            prompt: prompt,
+            image: [...imageUint8Array], // Pass the Uint8Array contents as an array of numbers
             max_tokens: 512, // A common default for generating descriptions
         };
 
