@@ -1,18 +1,24 @@
+// src/index.js - Your Cloudflare Worker script
 
-export interface Env {
-    AI: Ai; // This type declaration is for TypeScript, but good to include for clarity
-}
+// This Worker acts as a secure proxy to the Cloudflare Workers AI API using the env.AI binding.
+// The env.AI binding automatically handles authentication and URL construction,
+// keeping your ACCOUNT_ID and API_TOKEN secure.
+
+// No 'interface Env' declaration here, as this is a plain JavaScript file.
+// The `env` object will still be provided by Cloudflare's runtime.
 
 export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    // The 'env' parameter will contain your AI binding and any other variables.
+    // Using 'any' type here for 'env' to avoid TypeScript errors in a .js file.
+    async fetch(request, env) {
         // --- 1. Handle CORS Preflight Requests (OPTIONS method) ---
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type',
-                    'Access-Control-Max-Age': '86400',
+                    'Access-Control-Allow-Origin': '*', // Allows requests from any origin (your frontend)
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS', // Allowed HTTP methods
+                    'Access-Control-Allow-Headers': 'Content-Type', // Allowed headers in the actual request
+                    'Access-Control-Max-Age': '86400', // How long the preflight results can be cached (24 hours)
                 },
             });
         }
@@ -36,7 +42,7 @@ export default {
             });
         }
         
-        const { image, prompt } = requestData; // 'image' here is the base64 Data URI from frontend
+        const { image, prompt } = requestData; // 'image' here is the base64 Data URI string from frontend
 
         // --- 4. Basic Input Validation ---
         if (!image || !prompt) {
@@ -61,15 +67,15 @@ export default {
         }
 
         // --- IMPORTANT: Convert Base64 Data URI to Uint8Array for env.AI.run() ---
-        // Extract the base64 part (remove "data:image/...;base64,")
-        const base64Data = image.split(',')[1];
+        // The env.AI.run() binding expects raw binary image data (Uint8Array),
+        // not a base64 string.
+        const base64Data = image.split(',')[1]; // Extract just the base64 part
         let imageUint8Array;
         try {
-            // Decode the base64 string
-            const binaryString = atob(base64Data);
-            // Convert binary string to Uint8Array
-            imageUint8Array = Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
+            const binaryString = atob(base64Data); // Decode base64 to binary string
+            imageUint8Array = Uint8Array.from(binaryString, (char) => char.charCodeAt(0)); // Convert to Uint8Array
         } catch (e) {
+            console.error("Base64 decoding error:", e);
             return new Response(JSON.stringify({ message: 'Failed to decode base64 image data.' }), {
                 status: 400,
                 headers: { 
@@ -80,26 +86,25 @@ export default {
         }
 
         // --- 5. Call Cloudflare Workers AI using the `env.AI` binding ---
-        // The `env.AI.run()` method takes the model ID and an input object.
-        // It handles authentication and URL construction internally.
-        const modelId = "@cf/llava-hf/llava-1.5-7b-hf"; // Correct model ID as per docs
+        const modelId = "@cf/llava-hf/llava-1.5-7b-hf"; // This is the exact model ID from Cloudflare's docs
         const aiInput = {
             messages: [
                 {
                     role: "user",
                     content: prompt,
-                    image: [...imageUint8Array] // Pass as an array of numbers (Uint8Array contents)
+                    image: [...imageUint8Array] // Pass the Uint8Array contents as an array of numbers
                 }
             ],
-            max_tokens: 512, // As per docs, a good default for descriptions
+            max_tokens: 512, // A common default for generating descriptions
         };
 
         try {
-            // Make the call to the Cloudflare AI binding
+            // Make the call to the Cloudflare AI binding.
+            // Cloudflare handles authentication and API URL automatically here.
             const aiResult = await env.AI.run(modelId, aiInput);
             
             // --- 6. Return AI Result to Frontend ---
-            // aiResult will contain the 'description' field as per the documentation.
+            // The `aiResult` object from LLaVA usually contains a 'description' field.
             return new Response(JSON.stringify(aiResult), {
                 status: 200,
                 headers: { 
@@ -108,13 +113,13 @@ export default {
                 },
             });
 
-        } catch (error: any) { // Use 'any' for error type if not strictly TypeScript
+        } catch (error) {
             // --- 7. Handle Errors from AI Binding ---
             console.error("Worker error during AI binding call:", error);
-            // The AI binding error might be a string or object.
+            // Provide a user-friendly error message.
             const errorMessage = typeof error === 'string' ? error : (error.message || 'Unknown error from Cloudflare AI binding');
             return new Response(JSON.stringify({ message: `AI model error: ${errorMessage}` }), {
-                status: 500, // A 500 status indicates an issue on the server (Worker) side during AI call
+                status: 500, // Internal Server Error due to Worker's issue with AI call
                 headers: { 
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
@@ -122,4 +127,4 @@ export default {
             });
         }
     },
-} satisfies ExportedHandler<Env>; // Use satisfies ExportedHandler<Env> for better type checking
+};
