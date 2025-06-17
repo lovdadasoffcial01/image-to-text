@@ -1,0 +1,17 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v1 # Or a similar action
+        with:
+          apiToken: ${{ secrets.API_TOKEN }}
+          accountId: ${{ secrets.ACCOUNT_ID }}
+          # Other wrangler options
