@@ -1,0 +1,8 @@
+name = "image-to-text"
+main = "src/index.js" # or src/worker.js
+compatibility_date = "2024-06-17" # Use today's date or a later one
+
+# Add this section
+[vars]
+ACCOUNT_ID = "30d911bbabfa0db53eedb9cd5fecb31d" # Replace with your actual Cloudflare Account ID
+API_TOKEN = " BdL7gyRBdN4T4GLH5qmF4sPsfT_Ts0aAUlm_Chci"
